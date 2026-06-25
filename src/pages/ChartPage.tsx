@@ -44,6 +44,9 @@ export default function ChartPage({ expenses }: Props) {
   const maxDay = chartData.find(d => (d.amount ?? 0) === maxAmount && maxAmount > 0);
   const hasData = chartData.some(d => d.amount);
 
+  const selectDay = (day: number) =>
+    setSelectedDay(prev => (prev === day ? null : day));
+
   // 선택된 날짜 상세
   const selectedExps = selectedDay
     ? expenses.filter(e => e.expense_date === `${monthStr}-${pad(selectedDay)}`)
@@ -74,10 +77,31 @@ export default function ChartPage({ expenses }: Props) {
         stroke="white"
         strokeWidth={2}
         style={{ cursor: 'pointer' }}
-        onClick={() =>
-          setSelectedDay(prev => (prev === payload.day ? null : payload.day))
-        }
+        onClick={() => selectDay(payload.day)}
       />
+    );
+  };
+
+  // X축 날짜 라벨 — 클릭 가능
+  const renderXTick = (tickProps: any) => {
+    const { x, y, payload } = tickProps;
+    const day = payload.value as number;
+    const isSel = day === selectedDay;
+    const hasAmount = chartData.find(d => d.day === day)?.amount;
+    return (
+      <text
+        key={`tick-${day}`}
+        x={x}
+        y={y + 12}
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight={isSel ? '700' : '400'}
+        fill={isSel ? '#8B5E45' : '#9A8070'}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        onClick={() => selectDay(day)}
+      >
+        {hasAmount ? `${day}` : day}
+      </text>
     );
   };
 
@@ -166,36 +190,41 @@ export default function ChartPage({ expenses }: Props) {
               </div>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={chartData}
-                    margin={{ top: 36, right: 10, bottom: 4, left: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DC" vertical={false} />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 10, fill: '#9A8070' }}
-                      tickLine={false}
-                      axisLine={{ stroke: '#D9CFC5' }}
-                      interval={0}
-                    />
-                    <YAxis hide />
-                    <Line
-                      type="monotone"
-                      dataKey="amount"
-                      stroke="#C4956A"
-                      strokeWidth={2.5}
-                      dot={renderDot}
-                      activeDot={false}
-                      connectNulls={false}
-                      isAnimationActive={false}
+                {/* outline: none 으로 포커스 테두리 제거 */}
+                <div style={{ outline: 'none' }} tabIndex={-1}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 36, right: 10, bottom: 4, left: 10 }}
+                      style={{ outline: 'none' }}
                     >
-                      <LabelList dataKey="amount" content={renderLabel} />
-                    </Line>
-                  </LineChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DC" vertical={false} />
+                      <XAxis
+                        dataKey="day"
+                        tick={renderXTick}
+                        tickLine={false}
+                        axisLine={{ stroke: '#D9CFC5' }}
+                        interval={0}
+                        height={28}
+                      />
+                      <YAxis hide />
+                      <Line
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#C4956A"
+                        strokeWidth={2.5}
+                        dot={renderDot}
+                        activeDot={false}
+                        connectNulls={false}
+                        isAnimationActive={false}
+                      >
+                        <LabelList dataKey="amount" content={renderLabel} />
+                      </Line>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
                 <p className="text-center text-xs text-[#C4B5A8] mt-1">
-                  점을 클릭하면 오른쪽에 상세 내역이 표시됩니다
+                  점 또는 날짜를 클릭하면 상세 내역이 표시됩니다
                 </p>
               </>
             )}
@@ -221,7 +250,6 @@ export default function ChartPage({ expenses }: Props) {
                   </div>
                 ) : (
                   <>
-                    {/* 최다 지출 항목 - 크게 */}
                     <div className="bg-gradient-to-br from-[#8B5E45] to-[#C4956A] rounded-2xl p-5 mb-4 shadow-sm">
                       <p className="text-xs text-[#F0E6DE] opacity-80 mb-1 tracking-wide">최다 지출 항목</p>
                       <p className="text-xl font-bold text-white leading-tight">{topCat.name}</p>
@@ -230,7 +258,6 @@ export default function ChartPage({ expenses }: Props) {
                       </p>
                     </div>
 
-                    {/* 항목별 목록 */}
                     <div className="space-y-2">
                       {breakdown.map((cat, i) => (
                         <div

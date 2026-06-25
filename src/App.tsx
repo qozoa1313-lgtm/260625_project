@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from './lib/supabase';
 import type { Category, Expense } from './lib/supabase';
 import AddExpenseForm from './components/AddExpenseForm';
@@ -19,6 +20,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState(getSeoulDate);
   const [clockNow, setClockNow] = useState(new Date());
+
+  // 엑셀 다운로드 패널 상태
+  const [showExport, setShowExport] = useState(false);
+  const [exportStart, setExportStart] = useState('');
+  const [exportEnd, setExportEnd] = useState('');
 
   useEffect(() => {
     Promise.all([fetchCategories(), fetchExpenses()]).finally(() =>
@@ -60,6 +66,47 @@ export default function App() {
     setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
+  // 엑셀 다운로드 (overrideStart/End: 전체 다운로드 시 빈 문자열 강제 사용)
+  const handleExcelDownload = (overrideStart?: string, overrideEnd?: string) => {
+    const start = overrideStart !== undefined ? overrideStart : exportStart;
+    const end = overrideEnd !== undefined ? overrideEnd : exportEnd;
+    const filtered = expenses
+      .filter(e => {
+        if (start && e.expense_date < start) return false;
+        if (end && e.expense_date > end) return false;
+        return true;
+      })
+      .sort((a, b) => a.expense_date.localeCompare(b.expense_date));
+
+    if (filtered.length === 0) {
+      alert('해당 기간의 지출 내역이 없습니다.');
+      return;
+    }
+
+    const rows = filtered.map(e => ({
+      '날짜': e.expense_date,
+      '항목': e.category_name,
+      '지출한곳': e.store_name || '-',
+      '금액': e.amount,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 14 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '가계부');
+
+    const from = start || '처음';
+    const to = end || '끝';
+    XLSX.writeFile(wb, `가계부_${from}~${to}.xlsx`);
+    setShowExport(false);
+  };
+
   const filteredExpenses = filterDate
     ? expenses.filter(e => e.expense_date === filterDate)
     : expenses;
@@ -87,7 +134,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">💰</span>
-            <h1 className="text-xl font-bold text-[#F9F5F1]">가계부</h1>
+            <h1 className="text-xl font-bold text-[#F9F5F1]">어서오세요</h1>
           </div>
           <p className="text-sm text-white">
             {headerDate}&nbsp;&nbsp;{headerTime}
@@ -134,9 +181,10 @@ export default function App() {
               <DailyTotalBar expenses={expenses} selectedDate={currentDate} />
 
               <div className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#EDE5DC] flex items-center justify-between">
+                {/* 헤더 영역 */}
+                <div className="px-5 py-4 border-b border-[#EDE5DC] flex items-center justify-between gap-2 flex-wrap">
                   <h2 className="text-base font-semibold text-[#2A1A0E]">지출 내역</h2>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <input
                       type="date"
                       value={filterDate}
@@ -151,8 +199,65 @@ export default function App() {
                         전체 보기
                       </button>
                     )}
+                    <button
+                      onClick={() => setShowExport(v => !v)}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                        showExport
+                          ? 'bg-[#8B5E45] text-white border-[#8B5E45]'
+                          : 'bg-[#EDE5DC] text-[#6B5248] border-[#D9CFC5] hover:bg-[#D9CFC5]'
+                      }`}
+                    >
+                      📥 엑셀 다운로드
+                    </button>
                   </div>
                 </div>
+
+                {/* 엑셀 다운로드 패널 */}
+                {showExport && (
+                  <div className="px-5 py-4 bg-[#F0E6DE] border-b border-[#D9CFC5]">
+                    <p className="text-xs font-semibold text-[#6B5248] mb-3">📅 다운로드 기간 선택</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-[#9A8070]">시작일</label>
+                        <input
+                          type="date"
+                          value={exportStart}
+                          onChange={e => setExportStart(e.target.value)}
+                          className="px-3 py-1.5 text-xs border border-[#D9CFC5] rounded-lg bg-white text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
+                        />
+                      </div>
+                      <span className="text-[#9A8070] font-bold mt-4">~</span>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-[#9A8070]">종료일</label>
+                        <input
+                          type="date"
+                          value={exportEnd}
+                          onChange={e => setExportEnd(e.target.value)}
+                          className="px-3 py-1.5 text-xs border border-[#D9CFC5] rounded-lg bg-white text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 mt-4">
+                        <button
+                          onClick={() => handleExcelDownload()}
+                          className="px-4 py-1.5 bg-[#8B5E45] text-white text-xs font-semibold rounded-lg hover:bg-[#6E4A35] transition-colors shadow-sm"
+                        >
+                          ⬇ 다운로드
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-1 mt-4">
+                        <button
+                          onClick={() => handleExcelDownload('', '')}
+                          className="px-4 py-1.5 bg-[#EDE5DC] text-[#6B5248] text-xs font-medium rounded-lg hover:bg-[#D9CFC5] transition-colors"
+                        >
+                          전체 다운로드
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-[#C4B5A8] mt-2">
+                      * 기간을 선택하지 않으면 전체 내역이 다운로드됩니다
+                    </p>
+                  </div>
+                )}
 
                 {loading ? (
                   <div className="flex justify-center items-center h-40 text-[#C4B5A8]">

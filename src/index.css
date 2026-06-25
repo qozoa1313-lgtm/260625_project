@@ -16,3 +16,11 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* recharts 클릭 후 포커스 테두리 제거 */
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+.recharts-wrapper:focus,
+.recharts-wrapper svg:focus {
+  outline: none !important;
+}
