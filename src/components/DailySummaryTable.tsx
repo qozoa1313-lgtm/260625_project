@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Expense } from '../lib/supabase';
 
+// 초기 로드(fetch)와 신규 추가를 구분하기 위한 플래그
+
 type DailySummaryTableProps = {
   expenses: Expense[];
   filterDate: string;
@@ -26,6 +28,7 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
   const [showPicker, setShowPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear());
   const pickerRef = useRef<HTMLDivElement>(null);
+  const initialLoadDone = useRef(false);
 
   // 하단 날짜 필터가 바뀌면 오른쪽 월 동기화 (단방향)
   useEffect(() => {
@@ -36,9 +39,13 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
     setExpandedDate(null);
   }, [filterDate]);
 
-  // 새 지출 추가 시 최신 지출 월로 자동 이동
+  // 신규 지출 추가 시에만 해당 월로 이동 (초기 fetch는 무시)
   useEffect(() => {
     if (expenses.length === 0) return;
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      return; // 초기 로드 시 자동 이동 안함 → 오늘 월 유지
+    }
     const latest = expenses.reduce((a, b) =>
       a.expense_date > b.expense_date ? a : b
     );

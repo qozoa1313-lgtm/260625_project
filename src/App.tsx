@@ -5,11 +5,15 @@ import AddExpenseForm from './components/AddExpenseForm';
 import ExpenseRow from './components/ExpenseRow';
 import DailySummaryTable from './components/DailySummaryTable';
 import DailyTotalBar from './components/DailyTotalBar';
+import ChartPage from './pages/ChartPage';
+
+type Page = 'home' | 'chart';
 
 const getSeoulDate = () =>
   new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 
 export default function App() {
+  const [page, setPage] = useState<Page>('home');
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +26,6 @@ export default function App() {
     );
   }, []);
 
-  // 실시간 시계
   useEffect(() => {
     const timer = setInterval(() => setClockNow(new Date()), 1000);
     return () => clearInterval(timer);
@@ -92,87 +95,113 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* 지출 입력 폼 */}
-        <AddExpenseForm
-          categories={categories}
-          onCategoriesChange={setCategories}
-          onAdd={handleAdd}
-        />
+      {/* 페이지 콘텐츠 */}
+      {page === 'home' ? (
+        <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+          <AddExpenseForm
+            categories={categories}
+            onCategoriesChange={setCategories}
+            onAdd={handleAdd}
+          />
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 왼쪽: 지출 목록 */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            {/* 일별 합계 바 */}
-            <DailyTotalBar expenses={expenses} selectedDate={currentDate} />
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 왼쪽: 지출 목록 */}
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              <DailyTotalBar expenses={expenses} selectedDate={currentDate} />
 
-            {/* 필터 + 목록 */}
-            <div className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#EDE5DC] flex items-center justify-between">
-                <h2 className="text-base font-semibold text-[#2A1A0E]">지출 내역</h2>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={filterDate}
-                    onChange={e => setFilterDate(e.target.value)}
-                    className="px-3 py-1.5 text-xs border border-[#D9CFC5] rounded-lg bg-[#EDE5DC] text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
-                  />
-                  {filterDate && (
-                    <button
-                      onClick={() => setFilterDate('')}
-                      className="text-xs text-[#9A8070] hover:text-[#6B5248]"
-                    >
-                      전체 보기
-                    </button>
-                  )}
+              <div className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#EDE5DC] flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-[#2A1A0E]">지출 내역</h2>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={e => setFilterDate(e.target.value)}
+                      className="px-3 py-1.5 text-xs border border-[#D9CFC5] rounded-lg bg-[#EDE5DC] text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
+                    />
+                    {filterDate && (
+                      <button
+                        onClick={() => setFilterDate('')}
+                        className="text-xs text-[#9A8070] hover:text-[#6B5248]"
+                      >
+                        전체 보기
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {loading ? (
+                  <div className="flex justify-center items-center h-40 text-[#C4B5A8]">
+                    <p className="text-sm">불러오는 중...</p>
+                  </div>
+                ) : filteredExpenses.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-[#C4B5A8]">
+                    <span className="text-3xl mb-2">📝</span>
+                    <p className="text-sm">지출 내역이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[#EDE5DC]">
+                        <tr>
+                          <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">날짜</th>
+                          <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">항목</th>
+                          <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">지출한 곳</th>
+                          <th className="text-right px-3 py-3 text-xs font-medium text-[#9A8070]">금액</th>
+                          <th className="px-3 py-3 text-xs font-medium text-[#9A8070]"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredExpenses.map(exp => (
+                          <ExpenseRow
+                            key={exp.id}
+                            expense={exp}
+                            categories={categories}
+                            onCategoriesChange={setCategories}
+                            onUpdate={handleUpdate}
+                            onDelete={handleDelete}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {loading ? (
-                <div className="flex justify-center items-center h-40 text-[#C4B5A8]">
-                  <p className="text-sm">불러오는 중...</p>
-                </div>
-              ) : filteredExpenses.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-[#C4B5A8]">
-                  <span className="text-3xl mb-2">📝</span>
-                  <p className="text-sm">지출 내역이 없습니다</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-[#EDE5DC]">
-                      <tr>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">날짜</th>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">항목</th>
-                        <th className="text-left px-3 py-3 text-xs font-medium text-[#9A8070]">지출한 곳</th>
-                        <th className="text-right px-3 py-3 text-xs font-medium text-[#9A8070]">금액</th>
-                        <th className="px-3 py-3 text-xs font-medium text-[#9A8070]"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredExpenses.map(exp => (
-                        <ExpenseRow
-                          key={exp.id}
-                          expense={exp}
-                          categories={categories}
-                          onCategoriesChange={setCategories}
-                          onUpdate={handleUpdate}
-                          onDelete={handleDelete}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            {/* 오른쪽: 일별 합계 표 */}
+            <div className="lg:col-span-1">
+              <DailySummaryTable expenses={expenses} filterDate={filterDate} />
             </div>
           </div>
+        </main>
+      ) : (
+        <ChartPage expenses={expenses} />
+      )}
 
-          {/* 오른쪽: 일별 합계 표 */}
-          <div className="lg:col-span-1">
-            <DailySummaryTable expenses={expenses} filterDate={filterDate} />
-          </div>
+      {/* 하단 내비게이션 */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#2A1A0E] border-t border-[#3D2A1A]">
+        <div className="max-w-7xl mx-auto flex">
+          <button
+            onClick={() => setPage('home')}
+            className={`flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors ${
+              page === 'home' ? 'text-[#C4956A]' : 'text-[#6B5248] hover:text-[#9A8070]'
+            }`}
+          >
+            <span className="text-xl">📒</span>
+            <span className="text-xs font-medium">가계부</span>
+          </button>
+          <button
+            onClick={() => setPage('chart')}
+            className={`flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors ${
+              page === 'chart' ? 'text-[#C4956A]' : 'text-[#6B5248] hover:text-[#9A8070]'
+            }`}
+          >
+            <span className="text-xl">📊</span>
+            <span className="text-xs font-medium">그래프</span>
+          </button>
         </div>
-      </main>
+      </nav>
     </div>
   );
 }
