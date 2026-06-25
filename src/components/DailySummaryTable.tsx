@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import type { Expense } from '../lib/supabase';
-
-// 초기 로드(fetch)와 신규 추가를 구분하기 위한 플래그
 
 type DailySummaryTableProps = {
   expenses: Expense[];
@@ -30,7 +29,11 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
   const pickerRef = useRef<HTMLDivElement>(null);
   const initialLoadDone = useRef(false);
 
-  // 하단 날짜 필터가 바뀌면 오른쪽 월 동기화 (단방향)
+  // 엑셀 다운로드 상태
+  const [showExport, setShowExport] = useState(false);
+  const [exportStart, setExportStart] = useState('');
+  const [exportEnd, setExportEnd] = useState('');
+
   useEffect(() => {
     if (!filterDate) return;
     const [y, m] = filterDate.split('-').map(Number);
@@ -39,12 +42,11 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
     setExpandedDate(null);
   }, [filterDate]);
 
-  // 신규 지출 추가 시에만 해당 월로 이동 (초기 fetch는 무시)
   useEffect(() => {
     if (expenses.length === 0) return;
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
-      return; // 초기 로드 시 자동 이동 안함 → 오늘 월 유지
+      return;
     }
     const latest = expenses.reduce((a, b) =>
       a.expense_date > b.expense_date ? a : b
@@ -55,7 +57,6 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
     setExpandedDate(null);
   }, [expenses.length]);
 
-  // 팝업 바깥 클릭 시 닫기
   useEffect(() => {
     if (!showPicker) return;
     const handler = (e: MouseEvent) => {
@@ -86,6 +87,41 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
     setViewMonth(month);
     setExpandedDate(null);
     setShowPicker(false);
+  };
+
+  // 엑셀 다운로드
+  const handleExcelDownload = (overrideStart?: string, overrideEnd?: string) => {
+    const start = overrideStart !== undefined ? overrideStart : exportStart;
+    const end = overrideEnd !== undefined ? overrideEnd : exportEnd;
+
+    const filtered = expenses
+      .filter(e => {
+        if (start && e.expense_date < start) return false;
+        if (end && e.expense_date > end) return false;
+        return true;
+      })
+      .sort((a, b) => a.expense_date.localeCompare(b.expense_date));
+
+    if (filtered.length === 0) {
+      alert('해당 기간의 지출 내역이 없습니다.');
+      return;
+    }
+
+    const rows = filtered.map(e => ({
+      '날짜': e.expense_date,
+      '항목': e.category_name,
+      '지출한곳': e.store_name || '-',
+      '금액': e.amount,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '가계부');
+    const from = start || '처음';
+    const to = end || '끝';
+    XLSX.writeFile(wb, `가계부_${from}~${to}.xlsx`);
+    setShowExport(false);
   };
 
   const monthStr = `${viewYear}-${String(viewMonth).padStart(2, '0')}`;
@@ -126,67 +162,28 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
   const formatAmount = (n: number) => n.toLocaleString('ko-KR');
 
   return (
-    <div className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] p-5 h-full">
+    <div className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] p-5 h-full flex flex-col">
       <h2 className="text-base font-semibold text-[#2A1A0E] mb-3">일별 합계</h2>
 
       {/* 연/월 선택 */}
       <div className="relative flex items-center justify-between bg-[#EDE5DC] rounded-xl px-3 py-2 mb-4">
-        <button
-          onClick={prevMonth}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold"
-        >
-          ‹
-        </button>
-
-        <button
-          onClick={openPicker}
-          className="text-sm font-semibold text-[#2A1A0E] hover:text-[#8B5E45] transition-colors px-2 py-0.5 rounded-lg hover:bg-[#D9CFC5]"
-        >
+        <button onClick={prevMonth} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold">‹</button>
+        <button onClick={openPicker} className="text-sm font-semibold text-[#2A1A0E] hover:text-[#8B5E45] transition-colors px-2 py-0.5 rounded-lg hover:bg-[#D9CFC5]">
           {viewYear}년 {viewMonth}월
         </button>
+        <button onClick={nextMonth} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold">›</button>
 
-        <button
-          onClick={nextMonth}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold"
-        >
-          ›
-        </button>
-
-        {/* 년/월 선택 팝업 */}
         {showPicker && (
-          <div
-            ref={pickerRef}
-            className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 bg-white border border-[#D9CFC5] rounded-2xl shadow-xl p-4 w-64"
-          >
-            {/* 연도 선택 */}
+          <div ref={pickerRef} className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 bg-white border border-[#D9CFC5] rounded-2xl shadow-xl p-4 w-64">
             <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={() => setPickerYear(y => y - 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors"
-              >
-                ‹
-              </button>
+              <button onClick={() => setPickerYear(y => y - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors">‹</button>
               <span className="text-sm font-bold text-[#2A1A0E]">{pickerYear}년</span>
-              <button
-                onClick={() => setPickerYear(y => y + 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors"
-              >
-                ›
-              </button>
+              <button onClick={() => setPickerYear(y => y + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors">›</button>
             </div>
-
-            {/* 월 선택 그리드 */}
             <div className="grid grid-cols-4 gap-1">
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <button
-                  key={m}
-                  onClick={() => selectYearMonth(pickerYear, m)}
-                  className={`py-2 text-xs rounded-lg transition-colors font-medium ${
-                    pickerYear === viewYear && m === viewMonth
-                      ? 'bg-[#8B5E45] text-white'
-                      : 'text-[#2A1A0E] hover:bg-[#F0E6DE] hover:text-[#8B5E45]'
-                  }`}
-                >
+                <button key={m} onClick={() => selectYearMonth(pickerYear, m)}
+                  className={`py-2 text-xs rounded-lg transition-colors font-medium ${pickerYear === viewYear && m === viewMonth ? 'bg-[#8B5E45] text-white' : 'text-[#2A1A0E] hover:bg-[#F0E6DE] hover:text-[#8B5E45]'}`}>
                   {m}월
                 </button>
               ))}
@@ -197,79 +194,125 @@ export default function DailySummaryTable({ expenses, filterDate }: DailySummary
 
       <p className="text-xs text-[#9A8070] mb-3">날짜 클릭 시 항목별 내역을 볼 수 있어요</p>
 
-      {summaries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-40 text-[#C4B5A8]">
-          <span className="text-3xl mb-2">💸</span>
-          <p className="text-sm">{viewYear}년 {viewMonth}월 지출 내역이 없습니다</p>
-        </div>
-      ) : (
-        <>
-          <div className="overflow-y-auto max-h-[420px]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-[#F9F5F1] z-10">
-                <tr className="border-b border-[#D9CFC5]">
-                  <th className="text-left py-2 text-xs font-medium text-[#9A8070]">날짜</th>
-                  <th className="text-center py-2 text-xs font-medium text-[#9A8070]">건수</th>
-                  <th className="text-right py-2 text-xs font-medium text-[#9A8070]">합계</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.map(s => {
-                  const isOpen = expandedDate === s.date;
-                  const breakdown = isOpen ? getCategoryBreakdown(s.date) : [];
-                  return (
-                    <>
-                      <tr
-                        key={s.date}
-                        onClick={() => setExpandedDate(prev => prev === s.date ? null : s.date)}
-                        className={`border-b border-[#EDE5DC] cursor-pointer transition-colors ${
-                          isOpen ? 'bg-[#F0E6DE]' : 'hover:bg-[#EDE5DC]'
-                        }`}
-                      >
-                        <td className="py-2.5 text-xs text-[#6B5248]">
-                          <span className="inline-block mr-1 text-[#C4B5A8] text-[10px]">
-                            {isOpen ? '▼' : '▶'}
-                          </span>
-                          {formatDate(s.date)}
-                        </td>
-                        <td className="py-2.5 text-center">
-                          <span className="inline-block px-2 py-0.5 bg-[#EDE5DC] text-[#6B5248] rounded-full text-xs">
-                            {s.count}건
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-right font-semibold text-[#2A1A0E]">
-                          {formatAmount(s.total)}원
-                        </td>
-                      </tr>
-
-                      {isOpen && breakdown.map(b => (
-                        <tr key={`${s.date}-${b.category}`} className="bg-[#F0E6DE] border-b border-[#E8D8CC]">
-                          <td className="py-2 pl-6 text-xs text-[#8B5E45]">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C4956A] mr-2 align-middle" />
-                            {b.category}
-                            <span className="ml-1 text-[#C4B5A8]">({b.count}건)</span>
+      {/* 데이터 영역 */}
+      <div className="flex-1">
+        {summaries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 text-[#C4B5A8]">
+            <span className="text-3xl mb-2">💸</span>
+            <p className="text-sm">{viewYear}년 {viewMonth}월 지출 내역이 없습니다</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-y-auto max-h-[380px]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-[#F9F5F1] z-10">
+                  <tr className="border-b border-[#D9CFC5]">
+                    <th className="text-left py-2 text-xs font-medium text-[#9A8070]">날짜</th>
+                    <th className="text-center py-2 text-xs font-medium text-[#9A8070]">건수</th>
+                    <th className="text-right py-2 text-xs font-medium text-[#9A8070]">합계</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summaries.map(s => {
+                    const isOpen = expandedDate === s.date;
+                    const breakdown = isOpen ? getCategoryBreakdown(s.date) : [];
+                    return (
+                      <>
+                        <tr
+                          key={s.date}
+                          onClick={() => setExpandedDate(prev => prev === s.date ? null : s.date)}
+                          className={`border-b border-[#EDE5DC] cursor-pointer transition-colors ${isOpen ? 'bg-[#F0E6DE]' : 'hover:bg-[#EDE5DC]'}`}
+                        >
+                          <td className="py-2.5 text-xs text-[#6B5248]">
+                            <span className="inline-block mr-1 text-[#C4B5A8] text-[10px]">{isOpen ? '▼' : '▶'}</span>
+                            {formatDate(s.date)}
                           </td>
-                          <td />
-                          <td className="py-2 text-right text-xs font-medium text-[#8B5E45] pr-0">
-                            {formatAmount(b.total)}원
+                          <td className="py-2.5 text-center">
+                            <span className="inline-block px-2 py-0.5 bg-[#EDE5DC] text-[#6B5248] rounded-full text-xs">{s.count}건</span>
                           </td>
+                          <td className="py-2.5 text-right font-semibold text-[#2A1A0E]">{formatAmount(s.total)}원</td>
                         </tr>
-                      ))}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {isOpen && breakdown.map(b => (
+                          <tr key={`${s.date}-${b.category}`} className="bg-[#F0E6DE] border-b border-[#E8D8CC]">
+                            <td className="py-2 pl-6 text-xs text-[#8B5E45]">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C4956A] mr-2 align-middle" />
+                              {b.category}
+                              <span className="ml-1 text-[#C4B5A8]">({b.count}건)</span>
+                            </td>
+                            <td />
+                            <td className="py-2 text-right text-xs font-medium text-[#8B5E45] pr-0">{formatAmount(b.total)}원</td>
+                          </tr>
+                        ))}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-          <div className="mt-4 pt-3 border-t-2 border-[#D9CFC5] flex justify-between items-center">
-            <span className="text-sm font-semibold text-[#6B5248]">{viewMonth}월 합계</span>
-            <span className="text-base font-bold text-[#8B5E45]">
-              {formatAmount(monthTotal)}원
-            </span>
+            <div className="mt-4 pt-3 border-t-2 border-[#D9CFC5] flex justify-between items-center">
+              <span className="text-sm font-semibold text-[#6B5248]">{viewMonth}월 합계</span>
+              <span className="text-base font-bold text-[#8B5E45]">{formatAmount(monthTotal)}원</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 엑셀 다운로드 */}
+      <div className="mt-4 pt-3 border-t border-[#EDE5DC]">
+        {!showExport ? (
+          <button
+            onClick={() => setShowExport(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-[#9A8070] hover:text-[#6B5248] hover:bg-[#EDE5DC] rounded-lg transition-colors"
+          >
+            📥 엑셀로 다운로드
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[#6B5248]">📅 기간 선택</p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#9A8070] w-8 flex-shrink-0">시작</span>
+                <input
+                  type="date"
+                  value={exportStart}
+                  onChange={e => setExportStart(e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs border border-[#D9CFC5] rounded-lg bg-white text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#9A8070] w-8 flex-shrink-0">종료</span>
+                <input
+                  type="date"
+                  value={exportEnd}
+                  onChange={e => setExportEnd(e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs border border-[#D9CFC5] rounded-lg bg-white text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#8B5E45]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-1.5 pt-1">
+              <button
+                onClick={() => handleExcelDownload()}
+                className="flex-1 py-1.5 bg-[#8B5E45] text-white text-xs font-semibold rounded-lg hover:bg-[#6E4A35] transition-colors"
+              >
+                ⬇ 다운로드
+              </button>
+              <button
+                onClick={() => handleExcelDownload('', '')}
+                className="flex-1 py-1.5 bg-[#EDE5DC] text-[#6B5248] text-xs font-medium rounded-lg hover:bg-[#D9CFC5] transition-colors"
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setShowExport(false)}
+                className="px-3 py-1.5 text-xs text-[#9A8070] hover:text-[#6B5248] rounded-lg hover:bg-[#EDE5DC] transition-colors"
+              >
+                ✕
+              </button>
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
