@@ -93,11 +93,35 @@ export default function App() {
             {headerDate}&nbsp;&nbsp;{headerTime}
           </p>
         </div>
+
+        {/* 상단 탭 내비게이션 */}
+        <div className="max-w-7xl mx-auto px-4 flex border-t border-[#3D2A1A]">
+          <button
+            onClick={() => setPage('home')}
+            className={`px-6 py-2.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${
+              page === 'home'
+                ? 'border-[#C4956A] text-[#C4956A]'
+                : 'border-transparent text-[#6B5248] hover:text-[#9A8070]'
+            }`}
+          >
+            📒 가계부
+          </button>
+          <button
+            onClick={() => setPage('chart')}
+            className={`px-6 py-2.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${
+              page === 'chart'
+                ? 'border-[#C4956A] text-[#C4956A]'
+                : 'border-transparent text-[#6B5248] hover:text-[#9A8070]'
+            }`}
+          >
+            📊 그래프
+          </button>
+        </div>
       </header>
 
       {/* 페이지 콘텐츠 */}
       {page === 'home' ? (
-        <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+        <main className="max-w-7xl mx-auto px-4 py-6">
           <AddExpenseForm
             categories={categories}
             onCategoriesChange={setCategories}
@@ -178,30 +202,6 @@ export default function App() {
       ) : (
         <ChartPage expenses={expenses} />
       )}
-
-      {/* 하단 내비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#2A1A0E] border-t border-[#3D2A1A]">
-        <div className="max-w-7xl mx-auto flex">
-          <button
-            onClick={() => setPage('home')}
-            className={`flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors ${
-              page === 'home' ? 'text-[#C4956A]' : 'text-[#6B5248] hover:text-[#9A8070]'
-            }`}
-          >
-            <span className="text-xl">📒</span>
-            <span className="text-xs font-medium">가계부</span>
-          </button>
-          <button
-            onClick={() => setPage('chart')}
-            className={`flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors ${
-              page === 'chart' ? 'text-[#C4956A]' : 'text-[#6B5248] hover:text-[#9A8070]'
-            }`}
-          >
-            <span className="text-xl">📊</span>
-            <span className="text-xs font-medium">그래프</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

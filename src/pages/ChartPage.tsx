@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Expense } from '../lib/supabase';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, LabelList,
+  ResponsiveContainer, LabelList,
 } from 'recharts';
 
 type Props = { expenses: Expense[] };
@@ -20,16 +20,6 @@ const shortFmt = (n: number | null): string => {
 };
 
 const fmt = (n: number) => n.toLocaleString('ko-KR');
-
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.[0]?.value) return null;
-  return (
-    <div className="bg-white border border-[#D9CFC5] rounded-xl px-3 py-2 shadow-lg">
-      <p className="text-xs text-[#6B5248] mb-0.5">{label}일</p>
-      <p className="text-sm font-bold text-[#8B5E45]">{fmt(payload[0].value)}원</p>
-    </div>
-  );
-}
 
 export default function ChartPage({ expenses }: Props) {
   const seoulToday = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
@@ -66,10 +56,12 @@ export default function ChartPage({ expenses }: Props) {
   const topCat = breakdown[0];
   const dayTotal = selectedExps.reduce((s, e) => s + e.amount, 0);
 
-  // 커스텀 점 렌더러
+  // 커스텀 점 — onClick 직접 부착
   const renderDot = (dotProps: any) => {
     const { cx, cy, payload } = dotProps;
-    if (!payload.amount) return <circle key={`dot-empty-${payload.day}`} cx={cx} cy={cy} r={0} fill="none" />;
+    if (!payload.amount) {
+      return <g key={`dot-empty-${payload.day}`} />;
+    }
     const isMax = payload.day === maxDay?.day;
     const isSel = payload.day === selectedDay;
     return (
@@ -81,11 +73,15 @@ export default function ChartPage({ expenses }: Props) {
         fill={isMax ? '#8B5E45' : isSel ? '#C4956A' : '#D4A882'}
         stroke="white"
         strokeWidth={2}
+        style={{ cursor: 'pointer' }}
+        onClick={() =>
+          setSelectedDay(prev => (prev === payload.day ? null : payload.day))
+        }
       />
     );
   };
 
-  // 커스텀 라벨 렌더러
+  // 커스텀 라벨
   const renderLabel = (labelProps: any) => {
     const { x, y, value, index } = labelProps;
     if (!value || x === undefined || y === undefined) return null;
@@ -98,7 +94,7 @@ export default function ChartPage({ expenses }: Props) {
         x={x}
         y={y - (isMax ? 18 : 13)}
         textAnchor="middle"
-        fontSize={isMax ? 12 : 9}
+        fontSize={isMax ? 11 : 9}
         fontWeight={isMax ? '700' : '400'}
         fill={isMax ? '#8B5E45' : isSel ? '#C4956A' : '#6B5248'}
       >
@@ -107,15 +103,8 @@ export default function ChartPage({ expenses }: Props) {
     );
   };
 
-  const handleChartClick = (state: any) => {
-    if (state?.activePayload?.[0]?.payload?.amount) {
-      const day = state.activePayload[0].payload.day as number;
-      setSelectedDay(prev => prev === day ? null : day);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#EAE0D5] pb-20">
+    <div className="min-h-screen bg-[#EAE0D5]">
       <div className="max-w-7xl mx-auto px-4 py-6">
 
         {/* 연/월 선택 */}
@@ -177,39 +166,36 @@ export default function ChartPage({ expenses }: Props) {
               </div>
             ) : (
               <>
-                <div style={{ cursor: 'pointer' }}>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={chartData}
-                      margin={{ top: 36, right: 16, bottom: 4, left: 8 }}
-                      onClick={handleChartClick}
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 36, right: 10, bottom: 4, left: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DC" vertical={false} />
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 10, fill: '#9A8070' }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#D9CFC5' }}
+                      interval={0}
+                    />
+                    <YAxis hide />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#C4956A"
+                      strokeWidth={2.5}
+                      dot={renderDot}
+                      activeDot={false}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DC" vertical={false} />
-                      <XAxis
-                        dataKey="day"
-                        tick={{ fontSize: 11, fill: '#9A8070' }}
-                        tickLine={false}
-                        axisLine={{ stroke: '#D9CFC5' }}
-                        interval={daysInMonth > 20 ? 2 : 0}
-                      />
-                      <YAxis hide />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#D9CFC5', strokeWidth: 1 }} />
-                      <Line
-                        type="monotone"
-                        dataKey="amount"
-                        stroke="#C4956A"
-                        strokeWidth={2.5}
-                        dot={renderDot}
-                        activeDot={false}
-                        connectNulls={false}
-                      >
-                        <LabelList dataKey="amount" content={renderLabel} />
-                      </Line>
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                      <LabelList dataKey="amount" content={renderLabel} />
+                    </Line>
+                  </LineChart>
+                </ResponsiveContainer>
                 <p className="text-center text-xs text-[#C4B5A8] mt-1">
-                  날짜를 클릭하면 오른쪽에 상세 내역이 표시됩니다
+                  점을 클릭하면 오른쪽에 상세 내역이 표시됩니다
                 </p>
               </>
             )}
@@ -239,7 +225,9 @@ export default function ChartPage({ expenses }: Props) {
                     <div className="bg-gradient-to-br from-[#8B5E45] to-[#C4956A] rounded-2xl p-5 mb-4 shadow-sm">
                       <p className="text-xs text-[#F0E6DE] opacity-80 mb-1 tracking-wide">최다 지출 항목</p>
                       <p className="text-xl font-bold text-white leading-tight">{topCat.name}</p>
-                      <p className="text-3xl font-bold text-white mt-1.5">{fmt(topCat.total)}<span className="text-lg ml-1">원</span></p>
+                      <p className="text-3xl font-bold text-white mt-1.5">
+                        {fmt(topCat.total)}<span className="text-lg ml-1">원</span>
+                      </p>
                     </div>
 
                     {/* 항목별 목록 */}
