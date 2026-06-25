@@ -15,7 +15,7 @@ export default function AddExpenseForm({
   onCategoriesChange,
   onAdd,
 }: AddExpenseFormProps) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   const [date, setDate] = useState(today);
   const [categoryName, setCategoryName] = useState('');
   const [storeName, setStoreName] = useState('');

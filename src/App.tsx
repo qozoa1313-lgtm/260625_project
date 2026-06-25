@@ -6,17 +6,26 @@ import ExpenseRow from './components/ExpenseRow';
 import DailySummaryTable from './components/DailySummaryTable';
 import DailyTotalBar from './components/DailyTotalBar';
 
+const getSeoulDate = () =>
+  new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+
 export default function App() {
-  const today = new Date().toISOString().split('T')[0];
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDate, setFilterDate] = useState(getSeoulDate);
+  const [clockNow, setClockNow] = useState(new Date());
 
   useEffect(() => {
     Promise.all([fetchCategories(), fetchExpenses()]).finally(() =>
       setLoading(false)
     );
+  }, []);
+
+  // 실시간 시계
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const fetchCategories = async () => {
@@ -52,7 +61,21 @@ export default function App() {
     ? expenses.filter(e => e.expense_date === filterDate)
     : expenses;
 
-  const currentDate = filterDate || today;
+  const currentDate = filterDate || getSeoulDate();
+
+  const headerDate = clockNow.toLocaleDateString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
+  const headerTime = clockNow.toLocaleTimeString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
   return (
     <div className="min-h-screen bg-[#EAE0D5]">
@@ -63,13 +86,8 @@ export default function App() {
             <span className="text-2xl">💰</span>
             <h1 className="text-xl font-bold text-[#F9F5F1]">가계부</h1>
           </div>
-          <p className="text-sm text-[#C4956A]">
-            {new Date().toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
+          <p className="text-sm text-white">
+            {headerDate}&nbsp;&nbsp;{headerTime}
           </p>
         </div>
       </header>
@@ -151,7 +169,7 @@ export default function App() {
 
           {/* 오른쪽: 일별 합계 표 */}
           <div className="lg:col-span-1">
-            <DailySummaryTable expenses={expenses} />
+            <DailySummaryTable expenses={expenses} filterDate={filterDate} />
           </div>
         </div>
       </main>

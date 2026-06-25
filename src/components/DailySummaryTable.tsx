@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Expense } from '../lib/supabase';
 
 type DailySummaryTableProps = {
   expenses: Expense[];
+  filterDate: string;
 };
 
 type DailySummary = {
@@ -17,13 +18,25 @@ type CategoryBreakdown = {
   count: number;
 };
 
-export default function DailySummaryTable({ expenses }: DailySummaryTableProps) {
+export default function DailySummaryTable({ expenses, filterDate }: DailySummaryTableProps) {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(now.getFullYear());
+  const pickerRef = useRef<HTMLDivElement>(null);
 
-  // 새 지출이 추가될 때 가장 최근 지출의 월로 자동 이동
+  // 하단 날짜 필터가 바뀌면 오른쪽 월 동기화 (단방향)
+  useEffect(() => {
+    if (!filterDate) return;
+    const [y, m] = filterDate.split('-').map(Number);
+    setViewYear(y);
+    setViewMonth(m);
+    setExpandedDate(null);
+  }, [filterDate]);
+
+  // 새 지출 추가 시 최신 지출 월로 자동 이동
   useEffect(() => {
     if (expenses.length === 0) return;
     const latest = expenses.reduce((a, b) =>
@@ -35,6 +48,18 @@ export default function DailySummaryTable({ expenses }: DailySummaryTableProps) 
     setExpandedDate(null);
   }, [expenses.length]);
 
+  // 팝업 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
   const prevMonth = () => {
     if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12); }
     else setViewMonth(m => m - 1);
@@ -42,6 +67,18 @@ export default function DailySummaryTable({ expenses }: DailySummaryTableProps) 
   const nextMonth = () => {
     if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
     else setViewMonth(m => m + 1);
+  };
+
+  const openPicker = () => {
+    setPickerYear(viewYear);
+    setShowPicker(true);
+  };
+
+  const selectYearMonth = (year: number, month: number) => {
+    setViewYear(year);
+    setViewMonth(month);
+    setExpandedDate(null);
+    setShowPicker(false);
   };
 
   const monthStr = `${viewYear}-${String(viewMonth).padStart(2, '0')}`;
@@ -86,22 +123,69 @@ export default function DailySummaryTable({ expenses }: DailySummaryTableProps) 
       <h2 className="text-base font-semibold text-[#2A1A0E] mb-3">일별 합계</h2>
 
       {/* 연/월 선택 */}
-      <div className="flex items-center justify-between bg-[#EDE5DC] rounded-xl px-3 py-2 mb-4">
+      <div className="relative flex items-center justify-between bg-[#EDE5DC] rounded-xl px-3 py-2 mb-4">
         <button
           onClick={prevMonth}
           className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold"
         >
           ‹
         </button>
-        <span className="text-sm font-semibold text-[#2A1A0E]">
+
+        <button
+          onClick={openPicker}
+          className="text-sm font-semibold text-[#2A1A0E] hover:text-[#8B5E45] transition-colors px-2 py-0.5 rounded-lg hover:bg-[#D9CFC5]"
+        >
           {viewYear}년 {viewMonth}월
-        </span>
+        </button>
+
         <button
           onClick={nextMonth}
           className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#D9CFC5] text-[#6B5248] transition-colors font-bold"
         >
           ›
         </button>
+
+        {/* 년/월 선택 팝업 */}
+        {showPicker && (
+          <div
+            ref={pickerRef}
+            className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 bg-white border border-[#D9CFC5] rounded-2xl shadow-xl p-4 w-64"
+          >
+            {/* 연도 선택 */}
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => setPickerYear(y => y - 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors"
+              >
+                ‹
+              </button>
+              <span className="text-sm font-bold text-[#2A1A0E]">{pickerYear}년</span>
+              <button
+                onClick={() => setPickerYear(y => y + 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EDE5DC] text-[#6B5248] font-bold transition-colors"
+              >
+                ›
+              </button>
+            </div>
+
+            {/* 월 선택 그리드 */}
+            <div className="grid grid-cols-4 gap-1">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <button
+                  key={m}
+                  onClick={() => selectYearMonth(pickerYear, m)}
+                  className={`py-2 text-xs rounded-lg transition-colors font-medium ${
+                    pickerYear === viewYear && m === viewMonth
+                      ? 'bg-[#8B5E45] text-white'
+                      : 'text-[#2A1A0E] hover:bg-[#F0E6DE] hover:text-[#8B5E45]'
+                  }`}
+                >
+                  {m}월
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-[#9A8070] mb-3">날짜 클릭 시 항목별 내역을 볼 수 있어요</p>
