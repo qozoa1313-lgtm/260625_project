@@ -67,19 +67,17 @@ export default function AddExpenseForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-      <h2 className="text-base font-semibold text-gray-800 mb-4">지출 입력</h2>
+    <form onSubmit={handleSubmit} className="bg-[#F9F5F1] rounded-2xl shadow-sm border border-[#D9CFC5] p-5">
+      <h2 className="text-base font-semibold text-[#2A1A0E] mb-4">지출 입력</h2>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 날짜 */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">날짜</label>
+          <label className="block text-xs font-medium text-[#6B5248] mb-1">날짜</label>
           <DatePicker value={date} onChange={setDate} />
         </div>
 
-        {/* 항목 */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">항목</label>
+          <label className="block text-xs font-medium text-[#6B5248] mb-1">항목</label>
           <CategorySelect
             value={categoryName}
             onChange={setCategoryName}
@@ -88,41 +86,37 @@ export default function AddExpenseForm({
           />
         </div>
 
-        {/* 지출한 곳 */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">지출한 곳</label>
+          <label className="block text-xs font-medium text-[#6B5248] mb-1">지출한 곳</label>
           <input
             type="text"
             value={storeName}
             onChange={e => setStoreName(e.target.value)}
             placeholder="가게 이름 (선택)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-[#D9CFC5] rounded-lg text-sm text-[#2A1A0E] bg-white placeholder-[#C4B5A8] focus:outline-none focus:ring-2 focus:ring-[#C4956A] focus:border-[#8B5E45] transition-colors"
           />
         </div>
 
-        {/* 금액 */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">금액 (원)</label>
+          <label className="block text-xs font-medium text-[#6B5248] mb-1">금액 (원)</label>
           <input
             type="text"
             inputMode="numeric"
             value={amount}
             onChange={handleAmountChange}
             placeholder="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-[#D9CFC5] rounded-lg text-sm text-right text-[#2A1A0E] bg-white placeholder-[#C4B5A8] focus:outline-none focus:ring-2 focus:ring-[#C4956A] focus:border-[#8B5E45] transition-colors"
           />
         </div>
       </div>
 
-      {error && (
-        <p className="mt-2 text-xs text-red-500">{error}</p>
-      )}
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
 
       <div className="mt-4 flex justify-end">
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-40 transition-colors shadow-sm"
+          className="px-6 py-2 bg-[#8B5E45] text-[#F9F5F1] text-sm font-medium rounded-lg hover:bg-[#6E4A35] disabled:opacity-40 transition-colors shadow-sm"
         >
           {saving ? '저장 중...' : '+ 추가'}
         </button>

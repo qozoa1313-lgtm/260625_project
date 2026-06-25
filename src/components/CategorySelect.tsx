@@ -53,30 +53,26 @@ export default function CategorySelect({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors flex items-center justify-between"
+        className="w-full px-3 py-2 border border-[#D9CFC5] rounded-lg text-sm text-left bg-white hover:border-[#8B5E45] focus:outline-none focus:ring-2 focus:ring-[#C4956A] transition-colors flex items-center justify-between"
       >
-        <span className={value ? 'text-gray-800' : 'text-gray-400'}>
+        <span className={value ? 'text-[#2A1A0E]' : 'text-[#C4B5A8]'}>
           {value || '항목 선택'}
         </span>
-        <span className="text-gray-400 text-xs">▼</span>
+        <span className="text-[#9A8070] text-xs">▼</span>
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl w-full">
-          {/* 스크롤 가능한 목록 */}
+        <div className="absolute z-50 mt-1 bg-white border border-[#D9CFC5] rounded-xl shadow-xl w-full">
           <ul className="max-h-48 overflow-y-auto py-1">
             {categories.map(cat => (
               <li key={cat.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    onChange(cat.name);
-                    setOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                  onClick={() => { onChange(cat.name); setOpen(false); }}
+                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                     value === cat.name
-                      ? 'bg-blue-50 text-blue-600 font-medium'
-                      : 'text-gray-700'
+                      ? 'bg-[#F0E6DE] text-[#8B5E45] font-medium'
+                      : 'text-[#2A1A0E] hover:bg-[#F9F5F1]'
                   }`}
                 >
                   {value === cat.name && <span className="mr-1">✓</span>}
@@ -86,8 +82,7 @@ export default function CategorySelect({
             ))}
           </ul>
 
-          {/* 항목 추가 */}
-          <div className="border-t border-gray-100 p-2">
+          <div className="border-t border-[#EDE5DC] p-2">
             <div className="flex gap-1">
               <input
                 type="text"
@@ -95,13 +90,13 @@ export default function CategorySelect({
                 onChange={e => setNewCat(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
                 placeholder="새 항목 추가..."
-                className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300"
+                className="flex-1 px-2 py-1.5 text-xs border border-[#D9CFC5] rounded-lg text-[#2A1A0E] placeholder-[#C4B5A8] focus:outline-none focus:ring-1 focus:ring-[#C4956A]"
               />
               <button
                 type="button"
                 onClick={handleAdd}
                 disabled={adding || !newCat.trim()}
-                className="px-2 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40 transition-colors"
+                className="px-2 py-1.5 text-xs bg-[#8B5E45] text-[#F9F5F1] rounded-lg hover:bg-[#6E4A35] disabled:opacity-40 transition-colors"
               >
                 추가
               </button>

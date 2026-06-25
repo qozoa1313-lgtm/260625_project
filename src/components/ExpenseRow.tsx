@@ -56,8 +56,8 @@ export default function ExpenseRow({
 
   if (editing) {
     return (
-      <tr className="bg-blue-50">
-        <td className="px-3 py-2 text-sm text-gray-500">{expense.expense_date}</td>
+      <tr className="bg-[#F0E6DE]">
+        <td className="px-3 py-2 text-sm text-[#6B5248]">{expense.expense_date}</td>
         <td className="px-3 py-2">
           <CategorySelect
             value={catName}
@@ -71,7 +71,7 @@ export default function ExpenseRow({
             type="text"
             value={storeName}
             onChange={e => setStoreName(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300"
+            className="w-full px-2 py-1.5 text-sm border border-[#D9CFC5] rounded-lg text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#C4956A]"
           />
         </td>
         <td className="px-3 py-2">
@@ -79,7 +79,7 @@ export default function ExpenseRow({
             type="text"
             value={amount}
             onChange={e => setAmount(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg text-right focus:outline-none focus:ring-1 focus:ring-blue-300"
+            className="w-full px-2 py-1.5 text-sm border border-[#D9CFC5] rounded-lg text-right text-[#2A1A0E] focus:outline-none focus:ring-1 focus:ring-[#C4956A]"
           />
         </td>
         <td className="px-3 py-2 whitespace-nowrap">
@@ -87,13 +87,13 @@ export default function ExpenseRow({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-40"
+              className="px-2 py-1 text-xs bg-[#8B5E45] text-[#F9F5F1] rounded hover:bg-[#6E4A35] disabled:opacity-40"
             >
               저장
             </button>
             <button
               onClick={() => setEditing(false)}
-              className="px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+              className="px-2 py-1 text-xs bg-[#EDE5DC] text-[#6B5248] rounded hover:bg-[#D9CFC5]"
             >
               취소
             </button>
@@ -104,22 +104,22 @@ export default function ExpenseRow({
   }
 
   return (
-    <tr className="hover:bg-gray-50 group">
-      <td className="px-3 py-2 text-sm text-gray-500">{expense.expense_date}</td>
+    <tr className="hover:bg-[#F5EFE9] group border-b border-[#EDE5DC]">
+      <td className="px-3 py-2 text-sm text-[#6B5248]">{expense.expense_date}</td>
       <td className="px-3 py-2">
-        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+        <span className="inline-block px-2 py-0.5 bg-[#F0E6DE] text-[#8B5E45] rounded-full text-xs font-medium">
           {expense.category_name}
         </span>
       </td>
-      <td className="px-3 py-2 text-sm text-gray-700">{expense.store_name}</td>
-      <td className="px-3 py-2 text-sm text-right font-medium text-gray-800">
+      <td className="px-3 py-2 text-sm text-[#2A1A0E]">{expense.store_name}</td>
+      <td className="px-3 py-2 text-sm text-right font-medium text-[#2A1A0E]">
         {formatAmount(expense.amount)}원
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => setEditing(true)}
-            className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+            className="px-2 py-1 text-xs bg-[#EDE5DC] text-[#6B5248] rounded hover:bg-[#D9CFC5]"
           >
             수정
           </button>
